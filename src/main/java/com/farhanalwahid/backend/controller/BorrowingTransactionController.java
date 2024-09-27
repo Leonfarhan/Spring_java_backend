@@ -8,7 +8,9 @@ import com.farhanalwahid.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin("http://localhost:5173/")
@@ -44,17 +46,47 @@ public class BorrowingTransactionController {
 
     @PutMapping("/borrowing-transactions/{id}")
     public BorrowingTransaction updateBorrowingTransaction(
-            @RequestBody BorrowingTransaction newBorrowingTransaction,
+            @RequestBody Map<String, Object> requestBody,
             @PathVariable Long id) {
+
         return borrowingTransactionRepository.findById(id)
                 .map(borrowingTransaction -> {
-                    borrowingTransaction.setBook(bookRepository.findById(newBorrowingTransaction.getBook().getId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Book", "id", newBorrowingTransaction.getBook().getId())));
-                    borrowingTransaction.setUser(userRepository.findById(newBorrowingTransaction.getUser().getId())
-                            .orElseThrow(() -> new ResourceNotFoundException("User", "id", newBorrowingTransaction.getUser().getId())));
-                    borrowingTransaction.setBorrowDate(newBorrowingTransaction.getBorrowDate());
-                    borrowingTransaction.setReturnDate(newBorrowingTransaction.getReturnDate());
-                    borrowingTransaction.setStatus(newBorrowingTransaction.getStatus());
+                    if (requestBody.containsKey("status")) {
+                        borrowingTransaction.setStatus((String) requestBody.get("status"));
+                    }
+
+                    if (requestBody.containsKey("book")) {
+                        Object bookObject = requestBody.get("book");
+                        if (bookObject instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> bookData = (Map<String, Object>) bookObject;
+                            Long bookId = Long.valueOf(bookData.get("id").toString());
+                            borrowingTransaction.setBook(bookRepository.findById(bookId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("Book", "id", bookId)));
+                        }
+                    }
+
+                    if (requestBody.containsKey("user")) {
+                        Object userObject = requestBody.get("user");
+                        if (userObject instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> userData = (Map<String, Object>) userObject;
+                            Long userId = Long.valueOf(userData.get("id").toString());
+                            borrowingTransaction.setUser(userRepository.findById(userId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId)));
+                        }
+                    }
+
+                    if (requestBody.containsKey("borrowDate")) {
+                        LocalDate borrowDate = LocalDate.parse(requestBody.get("borrowDate").toString());
+                        borrowingTransaction.setBorrowDate(borrowDate);
+                    }
+
+                    if (requestBody.containsKey("returnDate")) {
+                        LocalDate returnDate = LocalDate.parse(requestBody.get("returnDate").toString());
+                        borrowingTransaction.setReturnDate(returnDate);
+                    }
+
                     return borrowingTransactionRepository.save(borrowingTransaction);
                 }).orElseThrow(() -> new ResourceNotFoundException("BorrowingTransaction", "id", id));
     }
